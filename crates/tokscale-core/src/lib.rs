@@ -3245,4 +3245,85 @@ mod tests {
         assert_eq!(parsed.messages[0].model_id, "deepseek-v3-0324");
         assert_eq!(parsed.messages[0].provider_id, "fireworks");
     }
+
+    #[test]
+    fn test_parse_local_clients_amp_partial_ledger_recovers_message_fallback_day() {
+        use chrono::TimeZone;
+
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let amp_dir = temp_dir.path().join(".local/share/amp/threads");
+        std::fs::create_dir_all(&amp_dir).unwrap();
+
+        let thread_created = chrono::DateTime::parse_from_rfc3339("2026-04-04T12:00:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let ledger_timestamp = chrono::DateTime::parse_from_rfc3339("2026-04-08T12:00:00Z")
+            .unwrap()
+            .timestamp_millis();
+
+        let thread = format!(
+            r#"{{
+                "id": "thread-amp-gap",
+                "created": {thread_created},
+                "usageLedger": {{
+                    "events": [
+                        {{
+                            "timestamp": "2026-04-08T12:00:00Z",
+                            "model": "claude-sonnet-4-0",
+                            "credits": 0.75,
+                            "tokens": {{ "input": 100, "output": 20 }}
+                        }}
+                    ]
+                }},
+                "messages": [
+                    {{
+                        "role": "assistant",
+                        "messageId": 1,
+                        "usage": {{
+                            "model": "claude-sonnet-4-0",
+                            "inputTokens": 100,
+                            "outputTokens": 20,
+                            "credits": 0.75
+                        }}
+                    }},
+                    {{
+                        "role": "assistant",
+                        "messageId": 2,
+                        "usage": {{
+                            "model": "claude-sonnet-4-0",
+                            "inputTokens": 50,
+                            "outputTokens": 10,
+                            "credits": 0.40
+                        }}
+                    }}
+                ]
+            }}"#
+        );
+        std::fs::write(amp_dir.join("T-thread-amp-gap.json"), thread).unwrap();
+
+        let parsed = parse_local_clients(LocalParseOptions {
+            home_dir: Some(temp_dir.path().to_str().unwrap().to_string()),
+            use_env_roots: false,
+            clients: Some(vec!["amp".to_string()]),
+            since: None,
+            until: None,
+            year: None,
+        })
+        .unwrap();
+
+        assert_eq!(parsed.counts.get(ClientId::Amp), 2);
+        assert_eq!(parsed.messages.len(), 2);
+
+        let dates: HashSet<String> = parsed.messages.iter().map(|msg| msg.date.clone()).collect();
+        let local_date = |timestamp_ms: i64| {
+            chrono::Local
+                .timestamp_millis_opt(timestamp_ms)
+                .single()
+                .unwrap()
+                .format("%Y-%m-%d")
+                .to_string()
+        };
+        assert!(dates.contains(&local_date(thread_created + 2000)));
+        assert!(dates.contains(&local_date(ledger_timestamp)));
+    }
 }
