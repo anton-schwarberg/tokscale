@@ -4410,18 +4410,54 @@ mod tests {
 
     #[test]
     fn test_client_flags_legacy_long_flags_rejected() {
-        // After the major bump that removed legacy flags, `--claude` and
-        // friends must produce a clap parse error instead of silently
-        // mutating filter state. Guards the removal.
-        match Cli::try_parse_from(["tokscale", "--claude"]) {
-            Ok(_) => panic!("legacy --claude must no longer parse"),
-            Err(err) => {
-                let rendered = err.to_string();
-                assert!(
-                    rendered.contains("--claude") || rendered.contains("unexpected"),
-                    "expected an unexpected-argument error, got: {rendered}"
-                );
+        // After the major bump that removed legacy flags, every old
+        // `--<client>` form must produce a clap parse error instead of
+        // silently mutating filter state. Table-driven so a future
+        // resurrection of any single flag (regression risk: someone
+        // adds `pub claude: bool` back to ClientFlags) is caught
+        // immediately.
+        //
+        // `--synthetic` is included explicitly because it is the only
+        // legacy flag without a matching `ClientId` — its handling has
+        // always been special-cased and is the most likely to regress.
+        for legacy in [
+            "--opencode",
+            "--claude",
+            "--codex",
+            "--copilot",
+            "--gemini",
+            "--cursor",
+            "--amp",
+            "--droid",
+            "--openclaw",
+            "--hermes",
+            "--pi",
+            "--kimi",
+            "--qwen",
+            "--roocode",
+            "--kilocode",
+            "--kilo",
+            "--mux",
+            "--crush",
+            "--synthetic",
+        ] {
+            match Cli::try_parse_from(["tokscale", legacy]) {
+                Ok(_) => panic!("legacy {legacy} must no longer parse"),
+                Err(err) => {
+                    let rendered = err.to_string();
+                    assert!(
+                        rendered.contains(legacy) || rendered.contains("unexpected"),
+                        "expected an unexpected-argument error for {legacy}, got: {rendered}"
+                    );
+                }
             }
+        }
+
+        // Sanity: the canonical replacement still parses for the same
+        // values so we have not over-tightened the parser.
+        for canonical in ["opencode", "claude", "synthetic"] {
+            Cli::try_parse_from(["tokscale", "--client", canonical])
+                .unwrap_or_else(|e| panic!("--client {canonical} must still parse: {e}"));
         }
     }
 
