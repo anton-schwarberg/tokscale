@@ -307,8 +307,6 @@ tokscale --client opencode,claude --week --json
 
 가능한 값: `opencode`, `claude`, `codex`, `copilot`, `gemini`, `cursor`, `amp`, `droid`, `openclaw`, `hermes`, `pi`, `kimi`, `qwen`, `roocode`, `kilocode`, `kilo`, `mux`, `crush`, `synthetic`.
 
-> **Deprecation 안내**: 기존 단일 클라이언트 플래그 (`--opencode`, `--claude`, `--codex` 등)는 하위 호환성을 위해 여전히 동작하지만 `--help`에서 숨겨졌으며 다음 메이저 릴리스에서 제거됩니다. 가능한 한 `--client`로 마이그레이션하세요. 인터랙티브 터미널에서 레거시 플래그를 사용하면 한 줄 경고가 출력됩니다.
-
 ### 날짜 필터링
 
 날짜 필터는 리포트를 생성하는 모든 명령어에서 작동합니다 (`tokscale`, `tokscale models`, `tokscale monthly`, `tokscale graph`):

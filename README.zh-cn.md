@@ -308,8 +308,6 @@ tokscale --client opencode,claude --week --json
 
 可用值：`opencode`、`claude`、`codex`、`copilot`、`gemini`、`cursor`、`amp`、`droid`、`openclaw`、`hermes`、`pi`、`kimi`、`qwen`、`roocode`、`kilocode`、`kilo`、`mux`、`crush`、`synthetic`。
 
-> **弃用通知**：旧的单客户端选项（`--opencode`、`--claude`、`--codex` 等）出于向后兼容仍然可用，但已从 `--help` 中隐藏，将在下一个主要版本中移除。请尽量迁移到 `--client`。在交互式终端中使用旧选项时会输出一行警告。
-
 ### 日期筛选
 
 日期筛选器适用于所有生成报告的命令（`tokscale`、`tokscale models`、`tokscale monthly`、`tokscale graph`）：

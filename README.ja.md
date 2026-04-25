@@ -308,8 +308,6 @@ tokscale --client opencode,claude --week --json
 
 利用可能な値: `opencode`, `claude`, `codex`, `copilot`, `gemini`, `cursor`, `amp`, `droid`, `openclaw`, `hermes`, `pi`, `kimi`, `qwen`, `roocode`, `kilocode`, `kilo`, `mux`, `crush`, `synthetic`。
 
-> **非推奨のお知らせ**: 既存の単一クライアントフラグ（`--opencode`、`--claude`、`--codex` など）は後方互換性のため引き続き動作しますが、`--help` から非表示となり、次のメジャーリリースで削除予定です。可能な限り `--client` への移行を推奨します。インタラクティブな端末で旧フラグを使用すると 1 行の警告が表示されます。
-
 ### 日付フィルタリング
 
 日付フィルターはレポートを生成するすべてのコマンドで機能します（`tokscale`、`tokscale models`、`tokscale monthly`、`tokscale graph`）：
