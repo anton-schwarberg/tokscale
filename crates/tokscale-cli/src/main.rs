@@ -4171,11 +4171,7 @@ mod tests {
             let id = filter.as_filter_str();
             let parsed =
                 <ClientFilter as ValueEnum>::from_str(id, true).expect("variant should parse");
-            assert_eq!(
-                parsed.as_filter_str(),
-                id,
-                "round-trip mismatch for {id}"
-            );
+            assert_eq!(parsed.as_filter_str(), id, "round-trip mismatch for {id}");
         }
     }
 
@@ -4190,8 +4186,8 @@ mod tests {
             vec![ClientFilter::Opencode, ClientFilter::Claude]
         );
 
-        let cli = Cli::try_parse_from(["tokscale", "-c", "opencode", "-c", "claude"])
-            .expect("parse ok");
+        let cli =
+            Cli::try_parse_from(["tokscale", "-c", "opencode", "-c", "claude"]).expect("parse ok");
         assert_eq!(
             cli.clients.clients,
             vec![ClientFilter::Opencode, ClientFilter::Claude]
