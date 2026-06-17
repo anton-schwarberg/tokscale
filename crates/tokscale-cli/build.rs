@@ -53,7 +53,14 @@ fn build_apple_fm() {
 
     // Build the SwiftPM package in release mode.
     let status = Command::new("swift")
-        .args(["build", "-c", "release", "--package-path"])
+        .args([
+            "build",
+            "-c",
+            "release",
+            "--product",
+            "FoundationModelsStatic",
+            "--package-path",
+        ])
         .arg(&pkg_dir)
         .status()
         .unwrap_or_else(|e| {
@@ -71,28 +78,38 @@ fn build_apple_fm() {
         );
     }
 
-    // Locate the produced dylib and copy it into OUT_DIR so the linker (and the
-    // runtime rpath below) can find it deterministically.
-    let dylib_name = "libFoundationModels.dylib";
-    let built_dylib = pkg_dir.join(".build/release").join(dylib_name);
-    if !built_dylib.exists() {
+    // Copy the STATIC archive into OUT_DIR and link it statically, so the final
+    // tokscale binary is self-contained — no `libFoundationModels.dylib` to ship
+    // alongside it. The archive's only remaining dependencies are Apple's system
+    // FoundationModels framework and the OS Swift runtime, both always present on
+    // macOS 26 (verified with `otool -L`: no non-system dylib references).
+    let lib_name = "libFoundationModelsStatic.a";
+    let built_lib = pkg_dir.join(".build/release").join(lib_name);
+    if !built_lib.exists() {
         panic!(
             "apple-fm: swift build succeeded but {} was not found",
-            built_dylib.display()
+            built_lib.display()
         );
     }
-    let dest_dylib = Path::new(&out_dir).join(dylib_name);
-    std::fs::copy(&built_dylib, &dest_dylib).unwrap_or_else(|e| {
+    let dest_lib = Path::new(&out_dir).join(lib_name);
+    std::fs::copy(&built_lib, &dest_lib).unwrap_or_else(|e| {
         panic!(
             "apple-fm: failed to copy {} -> {}: {e}",
-            built_dylib.display(),
-            dest_dylib.display()
+            built_lib.display(),
+            dest_lib.display()
         )
     });
 
-    // Link against the dylib in OUT_DIR, and bake an rpath so the final binary
-    // can locate it at runtime.
+    // Statically link the bindings archive, plus the system FoundationModels
+    // framework and the OS Swift runtime search path. The archive also carries
+    // autolink hints, but these are made explicit for a deterministic link.
     println!("cargo:rustc-link-search=native={out_dir}");
-    println!("cargo:rustc-link-lib=dylib=FoundationModels");
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{out_dir}");
+    println!("cargo:rustc-link-lib=static=FoundationModelsStatic");
+    println!("cargo:rustc-link-lib=framework=FoundationModels");
+    println!("cargo:rustc-link-search=native=/usr/lib/swift");
+    // The Swift runtime dylibs (e.g. libswift_Concurrency.dylib) are referenced
+    // via `@rpath`. They live in /usr/lib/swift, which is part of every macOS 26
+    // install's dyld shared cache, so baking this system rpath keeps the binary
+    // self-contained (it needs only OS-provided libraries at runtime).
+    println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
 }
