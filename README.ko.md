@@ -582,15 +582,17 @@ tokscale report --workspace my-project --client opencode
 
 | 백엔드 | 명령어 | 비고 |
 |---------|---------|-------|
-| `apple-fm` | (기본값) | 로컬 Python 스크립트를 통해 Apple Foundation Models 사용. macOS 전용. (macOS가 아닌 환경에서는 경고를 출력하고 빈 요약으로 동작) |
+| `apple-fm` | (기본값) | 로컬 Python 스크립트(`scripts/wiki-summarizer.py`)를 통해 Apple Foundation Models 사용. macOS 전용. Apple FM SDK를 사용할 수 없을 때는 휴리스틱 요약으로 폴백. **npm/bunx 패키지에는 포함되지 않음 — 아래 참고 사항 확인.** |
 | `claude` | `claude -p` | Claude Code CLI가 설치되어 인증되어 있어야 함. |
 | `codex` | `codex --quiet` | Codex CLI가 설치되어 인증되어 있어야 함. |
 | `gemini` | `gemini -p` | Gemini CLI가 설치되어 인증되어 있어야 함. |
 | `kiro` | `kiro --non-interactive` | Kiro CLI가 설치되어 인증되어 있어야 함. |
 
+> **`apple-fm` 사전 준비:** 요약 스크립트 `scripts/wiki-summarizer.py`는 소스 빌드에 포함되어 있지만, 배포된 npm/bunx 패키지에는 **포함되지 않습니다**. npm/bunx로 설치한 경우, tokscale 설정 디렉터리에 직접 복사하거나(예: Linux의 경우 `~/.config/tokscale/wiki-summarizer.py`) `--summarizer claude` / `codex` / `gemini` / `kiro` 중 CLI 백엔드를 선택하세요.
+
 **동작 방식:**
 
-1. 세션을 스캔하여 로컬 SQLite 위키 데이터베이스(`~/.config/tokscale/wiki.db`)에 삽입합니다
+1. 세션을 스캔하여 로컬 SQLite 위키 데이터베이스(`wiki.db`, 플랫폼 설정 디렉터리 — Linux: `~/.config/tokscale/`, macOS: `~/Library/Application Support/tokscale/`)에 삽입합니다
 2. 요약되지 않은 세션을 선택한 LLM 백엔드에 배치 단위로 보내면, 각 세션에 대해 제목, 카테고리, 설명, 복잡도를 반환합니다
 3. 두 번째 LLM 패스에서 제목이 붙은 모든 세션을 3~8개의 상위 수준 작업 클러스터로 묶습니다 (예: "Kiro Auth", "Tokscale Report", "System Config")
 4. 결과는 위키 DB에 캐시되며, 이후 실행 시 이미 요약된 세션은 건너뜁니다

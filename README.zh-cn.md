@@ -588,15 +588,17 @@ tokscale report --workspace my-project --client opencode
 
 | 后端 | 命令 | 说明 |
 |---------|---------|-------|
-| `apple-fm` | （默认） | 通过本地 Python 脚本使用 Apple Foundation Models。仅限 macOS。（在非 macOS 上降级为警告 + 空摘要） |
+| `apple-fm` | （默认） | 通过本地 Python 脚本（`scripts/wiki-summarizer.py`）使用 Apple Foundation Models。仅限 macOS；当 Apple FM SDK 不可用时，回退到启发式分类。**未包含在 npm/bunx 包中——参见下方注意事项。** |
 | `claude` | `claude -p` | 需要已安装并已认证的 Claude Code CLI。 |
 | `codex` | `codex --quiet` | 需要已安装并已认证的 Codex CLI。 |
 | `gemini` | `gemini -p` | 需要已安装并已认证的 Gemini CLI。 |
 | `kiro` | `kiro --non-interactive` | 需要已安装并已认证的 Kiro CLI。 |
 
+> **`apple-fm` 前置条件：** 摘要脚本 `scripts/wiki-summarizer.py` 随源码构建一同提供，但**未**包含在已发布的 npm/bunx 包中。若通过 npm/bunx 安装，请将其复制到 tokscale 配置目录（例如 Linux 上的 `~/.config/tokscale/wiki-summarizer.py`），或通过 `--summarizer claude` / `codex` / `gemini` / `kiro` 选择 CLI 后端。
+
 **工作原理：**
 
-1. 扫描会话并将其插入本地 SQLite wiki 数据库（`~/.config/tokscale/wiki.db`）
+1. 扫描会话并将其插入本地 SQLite wiki 数据库（`wiki.db`，位于平台配置目录——Linux 上为 `~/.config/tokscale/`，macOS 上为 `~/Library/Application Support/tokscale/`）
 2. 未摘要的会话分批发送到选定的 LLM 后端，后端为每个会话返回标题、类别、描述和复杂度
 3. 第二轮 LLM 处理将所有已加标题的会话归并为 3–8 个高层级任务集群（例如 "Kiro Auth"、"Tokscale Report"、"System Config"）
 4. 结果缓存在 wiki 数据库中 —— 后续运行会跳过已摘要的会话

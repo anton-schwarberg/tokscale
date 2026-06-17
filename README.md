@@ -681,15 +681,17 @@ tokscale report --workspace my-project --client opencode
 
 | Backend | Command | Notes |
 |---------|---------|-------|
-| `apple-fm` | (default) | Uses Apple Foundation Models via a local Python script. macOS only. |
+| `apple-fm` | (default) | Uses Apple Foundation Models via a local Python script (`scripts/wiki-summarizer.py`). macOS only; falls back to a heuristic classifier when the Apple FM SDK is unavailable. **Not bundled in the npm/bunx packages — see the note below.** |
 | `claude` | `claude -p` | Requires Claude Code CLI installed and authenticated. |
 | `codex` | `codex --quiet` | Requires Codex CLI installed and authenticated. |
 | `gemini` | `gemini -p` | Requires Gemini CLI installed and authenticated. |
 | `kiro` | `kiro --non-interactive` | Requires Kiro CLI installed and authenticated. |
 
+> **`apple-fm` prerequisite:** the summarizer script `scripts/wiki-summarizer.py` ships with source builds but is **not** included in the published npm/bunx packages. If you installed via npm/bunx, copy it into the tokscale config dir (e.g. `~/.config/tokscale/wiki-summarizer.py` on Linux) or choose a CLI backend with `--summarizer claude` / `codex` / `gemini` / `kiro`.
+
 **How it works:**
 
-1. Sessions are scanned and inserted into a local SQLite wiki database (`~/.config/tokscale/wiki.db`)
+1. Sessions are scanned and inserted into a local SQLite wiki database (`wiki.db` in your platform config dir — e.g. `~/.config/tokscale/` on Linux, `~/Library/Application Support/tokscale/` on macOS)
 2. Unsummarized sessions are sent to the chosen LLM backend in batches, which returns a title, category, description, and complexity for each
 3. A second LLM pass groups all titled sessions into 3–8 high-level task clusters (e.g. "Kiro Auth", "Tokscale Report", "System Config")
 4. Results are cached in the wiki DB — subsequent runs skip already-summarized sessions

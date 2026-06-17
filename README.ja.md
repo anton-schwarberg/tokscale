@@ -584,15 +584,17 @@ LLM 要約は**デフォルトで有効**になっています（`--no-summarize
 
 | バックエンド | コマンド | 備考 |
 |---------|---------|-------|
-| `apple-fm` | （デフォルト） | ローカルの Python スクリプト経由で Apple Foundation Models を使用。macOS のみ。（非 macOS では警告を出して要約は空になります） |
+| `apple-fm` | （デフォルト） | ローカルの Python スクリプト（`scripts/wiki-summarizer.py`）経由で Apple Foundation Models を使用。macOS のみ。Apple FM SDK が利用できない場合はヒューリスティック分類器にフォールバックします。**npm/bunx パッケージには同梱されていません — 下記の注を参照。** |
 | `claude` | `claude -p` | Claude Code CLI がインストールされ認証済みである必要があります。 |
 | `codex` | `codex --quiet` | Codex CLI がインストールされ認証済みである必要があります。 |
 | `gemini` | `gemini -p` | Gemini CLI がインストールされ認証済みである必要があります。 |
 | `kiro` | `kiro --non-interactive` | Kiro CLI がインストールされ認証済みである必要があります。 |
 
+> **`apple-fm` の前提条件:** サマライザースクリプト `scripts/wiki-summarizer.py` はソースビルドには同梱されていますが、公開済みの npm/bunx パッケージには**含まれていません**。npm/bunx でインストールした場合は、tokscale の設定ディレクトリにコピーするか（例：Linux なら `~/.config/tokscale/wiki-summarizer.py`）、`--summarizer claude` / `codex` / `gemini` / `kiro` で CLI バックエンドを選択してください。
+
 **仕組み:**
 
-1. セッションがスキャンされ、ローカルの SQLite wiki データベース（`~/.config/tokscale/wiki.db`）に挿入されます
+1. セッションがスキャンされ、プラットフォームの設定ディレクトリにあるローカルの SQLite wiki データベース（`wiki.db`）に挿入されます（Linux では `~/.config/tokscale/`、macOS では `~/Library/Application Support/tokscale/`）
 2. 未要約のセッションがバッチで選択した LLM バックエンドに送られ、それぞれにタイトル・カテゴリ・説明・複雑度が返されます
 3. 2 回目の LLM パスで、タイトル付けされたすべてのセッションを 3〜8 個の高レベルなタスククラスタにまとめます（例: "Kiro Auth"、"Tokscale Report"、"System Config"）
 4. 結果は wiki DB にキャッシュされ、以降の実行では要約済みのセッションをスキップします
