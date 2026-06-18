@@ -75,6 +75,14 @@ struct Cli {
     )]
     home: Option<String>,
 
+    #[arg(
+        long,
+        value_name = "SESSION_ID",
+        global = true,
+        help = "Filter the model report to a single session id (exact match). Pair with --group-by session,model."
+    )]
+    session: Option<String>,
+
     #[arg(long, help = "Show processing time")]
     benchmark: bool,
 
@@ -492,6 +500,7 @@ fn main() -> Result<()> {
                     benchmark,
                     no_spinner || !can_use_tui,
                     group_by,
+                    cli.session.clone(),
                     write_cache,
                     no_write_cache,
                 )
@@ -758,6 +767,7 @@ fn main() -> Result<()> {
                     cli.benchmark,
                     cli.no_spinner || cli.json,
                     group_by,
+                    cli.session.clone(),
                     cli.write_cache,
                     cli.no_write_cache,
                 )
@@ -770,6 +780,7 @@ fn main() -> Result<()> {
                     cli.benchmark,
                     cli.no_spinner || !can_use_tui,
                     group_by,
+                    cli.session.clone(),
                     cli.write_cache,
                     cli.no_write_cache,
                 )
@@ -1736,6 +1747,7 @@ fn run_models_report(
     benchmark: bool,
     no_spinner: bool,
     group_by: tokscale_core::GroupBy,
+    session: Option<String>,
     cli_write_cache: bool,
     cli_no_write_cache: bool,
 ) -> Result<()> {
@@ -1769,6 +1781,7 @@ fn run_models_report(
                 since: since.clone(),
                 until: until.clone(),
                 year: year.clone(),
+                session: session.clone(),
                 group_by: group_by.clone(),
                 scanner_settings: tui::settings::load_scanner_settings_for_home(&home_dir),
             })
@@ -1814,6 +1827,10 @@ fn run_models_report(
             workspace_label: Option<String>,
             #[serde(skip_serializing_if = "Option::is_none")]
             session_id: Option<String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            first_seen: Option<i64>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            last_seen: Option<i64>,
             model: String,
             provider: String,
             input: i64,
@@ -1866,6 +1883,20 @@ fn run_models_report(
                     },
                     session_id: if matches!(group_by, GroupBy::Session | GroupBy::ClientSession) {
                         e.session_id
+                    } else {
+                        None
+                    },
+                    first_seen: if matches!(group_by, GroupBy::Session | GroupBy::ClientSession)
+                        && e.first_seen > 0
+                    {
+                        Some(e.first_seen)
+                    } else {
+                        None
+                    },
+                    last_seen: if matches!(group_by, GroupBy::Session | GroupBy::ClientSession)
+                        && e.last_seen > 0
+                    {
+                        Some(e.last_seen)
                     } else {
                         None
                     },
@@ -2045,12 +2076,14 @@ fn run_models_report(
                 }
                 GroupBy::Session | GroupBy::ClientSession => {
                     let show_client = group_by == GroupBy::ClientSession;
-                    let mut header = Vec::with_capacity(6);
+                    let mut header = Vec::with_capacity(7);
                     if show_client {
                         header.push(Cell::new("Client").fg(Color::Cyan));
                     }
                     header.extend([
                         Cell::new("Session").fg(Color::Cyan),
+                        Cell::new("Started").fg(Color::Cyan),
+                        Cell::new("Workspace").fg(Color::Cyan),
                         Cell::new("Model").fg(Color::Cyan),
                         Cell::new("Total").fg(Color::Cyan),
                         Cell::new("Cost").fg(Color::Cyan),
@@ -2064,12 +2097,14 @@ fn run_models_report(
                             .session_id
                             .clone()
                             .unwrap_or_else(|| "(unknown)".to_string());
-                        let mut row = Vec::with_capacity(6);
+                        let mut row = Vec::with_capacity(7);
                         if show_client {
                             row.push(Cell::new(capitalize_client(&entry.client)));
                         }
                         row.extend([
                             Cell::new(session_label),
+                            Cell::new(format_session_started(entry.first_seen)),
+                            Cell::new(workspace_name(entry.workspace_label.as_deref())),
                             Cell::new(&entry.model),
                             Cell::new(format_tokens_with_commas(total_tokens))
                                 .set_alignment(CellAlignment::Right),
@@ -2083,22 +2118,18 @@ fn run_models_report(
                         + report.total_output
                         + report.total_cache_read
                         + report.total_cache_write;
-                    let mut total_row = Vec::with_capacity(6);
-                    if show_client {
-                        total_row.push(
-                            Cell::new("Total")
-                                .fg(Color::Yellow)
-                                .add_attribute(Attribute::Bold),
-                        );
+                    let mut total_row = Vec::with_capacity(7);
+                    total_row.push(
+                        Cell::new("Total")
+                            .fg(Color::Yellow)
+                            .add_attribute(Attribute::Bold),
+                    );
+                    // Blank cells span the columns between the label and Total:
+                    // Started, Workspace, Model (+ Session when client is shown).
+                    let blanks = if show_client { 4 } else { 3 };
+                    for _ in 0..blanks {
                         total_row.push(Cell::new(""));
-                    } else {
-                        total_row.push(
-                            Cell::new("Total")
-                                .fg(Color::Yellow)
-                                .add_attribute(Attribute::Bold),
-                        );
                     }
-                    total_row.push(Cell::new(""));
                     total_row.push(
                         Cell::new(format_tokens_with_commas(total_all))
                             .fg(Color::Yellow)
@@ -2232,12 +2263,14 @@ fn run_models_report(
                 }
                 GroupBy::Session | GroupBy::ClientSession => {
                     let show_client = group_by == GroupBy::ClientSession;
-                    let mut header = Vec::with_capacity(9);
+                    let mut header = Vec::with_capacity(11);
                     if show_client {
                         header.push(Cell::new("Client").fg(Color::Cyan));
                     }
                     header.extend([
                         Cell::new("Session").fg(Color::Cyan),
+                        Cell::new("Started").fg(Color::Cyan),
+                        Cell::new("Workspace").fg(Color::Cyan),
                         Cell::new("Provider").fg(Color::Cyan),
                         Cell::new("Model").fg(Color::Cyan),
                         Cell::new("Input").fg(Color::Cyan),
@@ -2255,12 +2288,14 @@ fn run_models_report(
                             .session_id
                             .clone()
                             .unwrap_or_else(|| "(unknown)".to_string());
-                        let mut row = Vec::with_capacity(9);
+                        let mut row = Vec::with_capacity(11);
                         if show_client {
                             row.push(Cell::new(capitalize_client(&entry.client)));
                         }
                         row.extend([
                             Cell::new(session_label),
+                            Cell::new(format_session_started(entry.first_seen)),
+                            Cell::new(workspace_name(entry.workspace_label.as_deref())),
                             Cell::new(&entry.provider).add_attribute(Attribute::Dim),
                             Cell::new(&entry.model),
                             Cell::new(format_tokens_with_commas(entry.input))
@@ -2281,13 +2316,15 @@ fn run_models_report(
                         + report.total_output
                         + report.total_cache_write
                         + report.total_cache_read;
-                    let mut total_row: Vec<Cell> = Vec::with_capacity(9);
+                    let mut total_row: Vec<Cell> = Vec::with_capacity(11);
                     total_row.push(
                         Cell::new("Total")
                             .fg(Color::Yellow)
                             .add_attribute(Attribute::Bold),
                     );
-                    let blanks = if show_client { 3 } else { 2 };
+                    // Blanks span Started, Workspace, Provider, Model (+ Session
+                    // when the client column is shown) before the Input total.
+                    let blanks = if show_client { 5 } else { 4 };
                     for _ in 0..blanks {
                         total_row.push(Cell::new(""));
                     }
@@ -2557,6 +2594,7 @@ fn run_monthly_report(
                 since,
                 until,
                 year,
+                session: None,
                 group_by: GroupBy::default(),
                 scanner_settings: tui::settings::load_scanner_settings_for_home(&home_dir),
             })
@@ -2852,6 +2890,7 @@ fn run_hourly_report(
                 since,
                 until,
                 year,
+                session: None,
                 group_by: GroupBy::default(),
                 scanner_settings: tui::settings::load_scanner_settings_for_home(&home_dir),
             })
@@ -3414,6 +3453,19 @@ fn run_pricing_list_overrides(json: bool) -> Result<()> {
 
 fn format_currency(n: f64) -> String {
     format!("${:.2}", n)
+}
+
+/// Format a Unix-ms timestamp as a local "YYYY-MM-DD HH:MM" label for the
+/// session tables. Returns "—" when the timestamp is missing or invalid.
+fn format_session_started(timestamp_ms: i64) -> String {
+    use chrono::{Local, TimeZone};
+    if timestamp_ms <= 0 {
+        return "—".to_string();
+    }
+    match Local.timestamp_millis_opt(timestamp_ms) {
+        chrono::LocalResult::Single(dt) => dt.format("%Y-%m-%d %H:%M").to_string(),
+        _ => "—".to_string(),
+    }
 }
 
 fn format_cost_per_million(cost: f64, total_tokens: i64) -> String {
@@ -4518,6 +4570,7 @@ fn run_time_metrics_report(
                 since,
                 until,
                 year,
+                session: None,
                 group_by: GroupBy::default(),
                 scanner_settings: tui::settings::load_scanner_settings_for_home(&home_dir),
             })
@@ -4634,6 +4687,7 @@ fn run_graph_command(
                 since,
                 until,
                 year,
+                session: None,
                 group_by: GroupBy::default(),
                 scanner_settings: tui::settings::load_scanner_settings_for_home(&home_dir),
             })
@@ -4989,6 +5043,7 @@ fn run_submit_command(
                 since,
                 until,
                 year,
+                session: None,
                 group_by: GroupBy::default(),
                 scanner_settings: tui::settings::load_scanner_settings(),
             })

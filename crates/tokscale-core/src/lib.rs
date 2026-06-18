@@ -397,6 +397,9 @@ pub struct ReportOptions {
     pub since: Option<String>,
     pub until: Option<String>,
     pub year: Option<String>,
+    /// Restrict the report to a single session id. When set, only messages
+    /// whose `session_id` matches exactly are included.
+    pub session: Option<String>,
     pub group_by: GroupBy,
     /// Persistent scanner config loaded from `~/.config/tokscale/settings.json`.
     /// Defaults to empty when callers don't care about user-configured paths.
@@ -410,6 +413,11 @@ pub struct ModelUsage {
     pub workspace_key: Option<String>,
     pub workspace_label: Option<String>,
     pub session_id: Option<String>,
+    /// Earliest message timestamp (Unix ms) in this group. 0 when unknown.
+    /// Populated for session grouping so callers can show when a session began.
+    pub first_seen: i64,
+    /// Latest message timestamp (Unix ms) in this group. 0 when unknown.
+    pub last_seen: i64,
     pub model: String,
     pub provider: String,
     pub input: i64,
@@ -1508,7 +1516,9 @@ fn aggregate_model_usage_entries(
             } else {
                 None
             },
-            workspace_label: if matches!(group_by, GroupBy::WorkspaceModel) {
+            // Session grouping also carries the workspace label so callers can
+            // show which project a session belonged to alongside its id.
+            workspace_label: if matches!(group_by, GroupBy::WorkspaceModel) || session_grouped {
                 Some(workspace_label.clone())
             } else {
                 None
@@ -1518,6 +1528,8 @@ fn aggregate_model_usage_entries(
             } else {
                 None
             },
+            first_seen: 0,
+            last_seen: 0,
             model: normalized.clone(),
             provider: msg.provider_id.clone(),
             input: 0,
@@ -1546,6 +1558,15 @@ fn aggregate_model_usage_entries(
             && !entry.provider.split(", ").any(|p| p == msg.provider_id)
         {
             entry.provider = format!("{}, {}", entry.provider, msg.provider_id);
+        }
+
+        if msg.timestamp > 0 {
+            if entry.first_seen == 0 || msg.timestamp < entry.first_seen {
+                entry.first_seen = msg.timestamp;
+            }
+            if msg.timestamp > entry.last_seen {
+                entry.last_seen = msg.timestamp;
+            }
         }
 
         entry.input += msg.tokens.input;
@@ -1950,6 +1971,10 @@ fn filter_messages_for_report(
 
     if let Some(until) = &options.until {
         filtered.retain(|m| m.date.as_str() <= until.as_str());
+    }
+
+    if let Some(session) = &options.session {
+        filtered.retain(|m| m.session_id == *session);
     }
 
     filtered
@@ -3416,10 +3441,49 @@ mod tests {
         assert_eq!(entries[0].model, "claude-sonnet-4-5");
         assert!((entries[0].cost - 4.0).abs() < f64::EPSILON);
         assert_eq!(entries[0].message_count, 2);
+        // workspace_key stays None (only WorkspaceModel sets it), but session
+        // grouping now carries a workspace_label so callers can show the
+        // project — here the messages have no workspace, so it falls back.
         assert!(entries[0].workspace_key.is_none());
-        assert!(entries[0].workspace_label.is_none());
+        assert_eq!(
+            entries[0].workspace_label.as_deref(),
+            Some(UNKNOWN_WORKSPACE_LABEL)
+        );
         // Session grouping does not merge_clients into a comma list.
         assert!(entries[0].merged_clients.is_none());
+    }
+
+    #[test]
+    fn test_session_grouping_tracks_first_and_last_seen() {
+        // first_seen/last_seen should span the earliest and latest message
+        // timestamps in the group, so callers can show when a session ran.
+        let mut early = make_workspace_message(
+            "claude",
+            "gpt-5",
+            "openai",
+            "session-span",
+            1.0,
+            None,
+            None,
+        );
+        early.set_timestamp(1_000_000);
+        let mut late = make_workspace_message(
+            "claude",
+            "gpt-5",
+            "openai",
+            "session-span",
+            1.0,
+            None,
+            None,
+        );
+        late.set_timestamp(5_000_000);
+
+        // Pass late first to confirm we take the min, not first-seen order.
+        let entries = aggregate_model_usage_entries(vec![late, early], &GroupBy::Session);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].first_seen, 1_000_000);
+        assert_eq!(entries[0].last_seen, 5_000_000);
     }
 
     #[test]
@@ -6176,6 +6240,7 @@ mod tests {
                     since: None,
                     until: None,
                     year: None,
+                    session: None,
                     group_by: GroupBy::default(),
                     scanner_settings: scanner::ScannerSettings::default(),
                 },
