@@ -681,13 +681,11 @@ tokscale report --workspace my-project --client opencode
 
 | Backend | Command | Notes |
 |---------|---------|-------|
-| `apple-fm` | (default) | Uses Apple Foundation Models via a local Python script (`scripts/wiki-summarizer.py`). macOS only; falls back to a heuristic classifier when the Apple FM SDK is unavailable. **Not bundled in the npm/bunx packages — see the note below.** |
+| `apple-fm` | (default) | Uses Apple Foundation Models on-device via native Rust FFI (no Python). Requires a macOS build with the `apple-fm` Cargo feature and Apple Intelligence enabled; otherwise it transparently falls back to a built-in Rust heuristic classifier (so the default works everywhere). |
 | `claude` | `claude -p` | Requires Claude Code CLI installed and authenticated. |
 | `codex` | `codex --quiet` | Requires Codex CLI installed and authenticated. |
 | `gemini` | `gemini -p` | Requires Gemini CLI installed and authenticated. |
 | `kiro` | `kiro --non-interactive` | Requires Kiro CLI installed and authenticated. |
-
-> **`apple-fm` prerequisite:** the summarizer script `scripts/wiki-summarizer.py` ships with source builds but is **not** included in the published npm/bunx packages. If you installed via npm/bunx, copy it into the tokscale config dir (e.g. `~/.config/tokscale/wiki-summarizer.py` on Linux) or choose a CLI backend with `--summarizer claude` / `codex` / `gemini` / `kiro`.
 
 **How it works:**
 

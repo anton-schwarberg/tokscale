@@ -584,13 +584,11 @@ LLM 要約は**デフォルトで有効**になっています（`--no-summarize
 
 | バックエンド | コマンド | 備考 |
 |---------|---------|-------|
-| `apple-fm` | （デフォルト） | ローカルの Python スクリプト（`scripts/wiki-summarizer.py`）経由で Apple Foundation Models を使用。macOS のみ。Apple FM SDK が利用できない場合はヒューリスティック分類器にフォールバックします。**npm/bunx パッケージには同梱されていません — 下記の注を参照。** |
+| `apple-fm` | （デフォルト） | ネイティブ Rust FFI 経由でオンデバイスの Apple Foundation Models を使用します（Python 不要）。`apple-fm` Cargo フィーチャーを有効にした macOS ビルドと、Apple Intelligence が有効な環境が必要です。それ以外の場合は組み込みの Rust ヒューリスティック分類器に透過的にフォールバックするため、デフォルトはどこでも動作します。 |
 | `claude` | `claude -p` | Claude Code CLI がインストールされ認証済みである必要があります。 |
 | `codex` | `codex --quiet` | Codex CLI がインストールされ認証済みである必要があります。 |
 | `gemini` | `gemini -p` | Gemini CLI がインストールされ認証済みである必要があります。 |
 | `kiro` | `kiro --non-interactive` | Kiro CLI がインストールされ認証済みである必要があります。 |
-
-> **`apple-fm` の前提条件:** サマライザースクリプト `scripts/wiki-summarizer.py` はソースビルドには同梱されていますが、公開済みの npm/bunx パッケージには**含まれていません**。npm/bunx でインストールした場合は、tokscale の設定ディレクトリにコピーするか（例：Linux なら `~/.config/tokscale/wiki-summarizer.py`）、`--summarizer claude` / `codex` / `gemini` / `kiro` で CLI バックエンドを選択してください。
 
 **仕組み:**
 

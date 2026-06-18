@@ -588,13 +588,11 @@ tokscale report --workspace my-project --client opencode
 
 | 后端 | 命令 | 说明 |
 |---------|---------|-------|
-| `apple-fm` | （默认） | 通过本地 Python 脚本（`scripts/wiki-summarizer.py`）使用 Apple Foundation Models。仅限 macOS；当 Apple FM SDK 不可用时，回退到启发式分类。**未包含在 npm/bunx 包中——参见下方注意事项。** |
+| `apple-fm` | （默认） | 通过原生 Rust FFI 在本地使用 Apple Foundation Models（无需 Python）。需要启用 `apple-fm` Cargo 特性的 macOS 构建，且须开启 Apple Intelligence；否则将透明回退至内置 Rust 启发式分类器（因此默认配置可在所有平台正常使用）。 |
 | `claude` | `claude -p` | 需要已安装并已认证的 Claude Code CLI。 |
 | `codex` | `codex --quiet` | 需要已安装并已认证的 Codex CLI。 |
 | `gemini` | `gemini -p` | 需要已安装并已认证的 Gemini CLI。 |
 | `kiro` | `kiro --non-interactive` | 需要已安装并已认证的 Kiro CLI。 |
-
-> **`apple-fm` 前置条件：** 摘要脚本 `scripts/wiki-summarizer.py` 随源码构建一同提供，但**未**包含在已发布的 npm/bunx 包中。若通过 npm/bunx 安装，请将其复制到 tokscale 配置目录（例如 Linux 上的 `~/.config/tokscale/wiki-summarizer.py`），或通过 `--summarizer claude` / `codex` / `gemini` / `kiro` 选择 CLI 后端。
 
 **工作原理：**
 

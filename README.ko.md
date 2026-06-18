@@ -582,13 +582,11 @@ tokscale report --workspace my-project --client opencode
 
 | 백엔드 | 명령어 | 비고 |
 |---------|---------|-------|
-| `apple-fm` | (기본값) | 로컬 Python 스크립트(`scripts/wiki-summarizer.py`)를 통해 Apple Foundation Models 사용. macOS 전용. Apple FM SDK를 사용할 수 없을 때는 휴리스틱 요약으로 폴백. **npm/bunx 패키지에는 포함되지 않음 — 아래 참고 사항 확인.** |
+| `apple-fm` | (기본값) | 네이티브 Rust FFI를 통해 Apple Foundation Models를 온디바이스에서 사용 (Python 불필요). `apple-fm` Cargo 피처를 활성화한 macOS 빌드와 Apple Intelligence가 필요하며, 그렇지 않은 경우 내장 Rust 휴리스틱 분류기로 투명하게 폴백합니다 (기본값은 어디서나 동작). |
 | `claude` | `claude -p` | Claude Code CLI가 설치되어 인증되어 있어야 함. |
 | `codex` | `codex --quiet` | Codex CLI가 설치되어 인증되어 있어야 함. |
 | `gemini` | `gemini -p` | Gemini CLI가 설치되어 인증되어 있어야 함. |
 | `kiro` | `kiro --non-interactive` | Kiro CLI가 설치되어 인증되어 있어야 함. |
-
-> **`apple-fm` 사전 준비:** 요약 스크립트 `scripts/wiki-summarizer.py`는 소스 빌드에 포함되어 있지만, 배포된 npm/bunx 패키지에는 **포함되지 않습니다**. npm/bunx로 설치한 경우, tokscale 설정 디렉터리에 직접 복사하거나(예: Linux의 경우 `~/.config/tokscale/wiki-summarizer.py`) `--summarizer claude` / `codex` / `gemini` / `kiro` 중 CLI 백엔드를 선택하세요.
 
 **동작 방식:**
 
@@ -597,7 +595,7 @@ tokscale report --workspace my-project --client opencode
 3. 두 번째 LLM 패스에서 제목이 붙은 모든 세션을 3~8개의 상위 수준 작업 클러스터로 묶습니다 (예: "Kiro Auth", "Tokscale Report", "System Config")
 4. 결과는 위키 DB에 캐시되며, 이후 실행 시 이미 요약된 세션은 건너뜁니다
 
-요약은 기본적으로 활성화되어 있으며 기본 백엔드는 `apple-fm`(Apple Foundation Models, 로컬 Python 스크립트, macOS 전용)입니다. `--no-summarize`로 요약을 끌 수 있습니다.
+요약은 기본적으로 활성화되어 있으며 기본 백엔드는 `apple-fm`(네이티브 Rust를 통한 Apple Foundation Models 온디바이스 추론, Python 불필요)입니다. `--no-summarize`로 요약을 끌 수 있습니다.
 
 **예시 출력:**
 
