@@ -113,6 +113,7 @@ In the age of AI-assisted development, **tokens are the new energy**. They power
   - [Basic Commands](#basic-commands)
   - [TUI Features](#tui-features)
   - [Filtering by Platform](#filtering-by-platform)
+  - [Filtering by Session](#filtering-by-session)
   - [Date Filtering](#date-filtering)
   - [Pricing Lookup](#pricing-lookup)
   - [Social](#social)
@@ -319,7 +320,14 @@ Press `g` in the TUI or use `--group-by` in `--light`/`--json` mode to control h
 
 **`--group-by session,model`** (per-session cost attribution)
 
-`tokscale models --json --group-by session,model` emits one entry per `(session_id, model)`. Each entry includes a top-level `sessionId` field so downstream tools (e.g. multi-agent IDEs) can join cost data back to a specific agent-CLI session:
+In `--light` mode each row shows the session id alongside **Started** (the local date + time the session began) and **Workspace** (the project it ran in), so you can identify a specific session at a glance without inspecting the underlying store:
+
+| Session | Started | Workspace | Model | Total | Cost |
+|---------|---------|-----------|-------|-------|------|
+| ses_222d0f9a0ffe… | 2026-04-30 08:58 | risk-calculator-app | gemini-3.1-pro-preview | 15,394,030 | $5.58 |
+| ses_230ece64dffe… | 2026-04-27 15:13 | risk-calculator-app | gemini-3.1-pro-preview | 5,693,408 | $1.98 |
+
+`tokscale models --json --group-by session,model` emits one entry per `(session_id, model)`. Each entry includes a top-level `sessionId` field plus `firstSeen`/`lastSeen` timestamps (Unix ms) so downstream tools (e.g. multi-agent IDEs) can join cost data back to a specific agent-CLI session:
 
 ```json
 {
@@ -327,6 +335,8 @@ Press `g` in the TUI or use `--group-by` in `--light`/`--json` mode to control h
   "entries": [
     {
       "sessionId": "019e1e27-af49-7cd1-89b7-7bad1c3f3be2",
+      "firstSeen": 1777532339880,
+      "lastSeen": 1777539999933,
       "client": "codex",
       "provider": "openai",
       "model": "gpt-5",
@@ -371,6 +381,28 @@ tokscale --client opencode,claude --week --json
 Possible values: `opencode`, `claude`, `codex`, `copilot`, `gemini`, `cursor`, `amp`, `codebuff`, `droid`, `openclaw`, `hermes`, `pi`, `kimi`, `qwen`, `roocode`, `kilocode`, `kilo`, `mux`, `crush`, `goose`, `antigravity`, `antigravity-cli`, `zed`, `kiro`, `trae`, `warp`, `cline`, `gjc`, `grok`, `jcode`, `micode`, `commandcode`, `synthetic`.
 
 > **Deprecation notice**: The legacy single-client flags (`--opencode`, `--claude`, `--codex`, etc.) still work for backward compatibility but are hidden from `--help` and will be removed in the next major release. Migrate to `--client` whenever possible. Running tokscale in an interactive terminal will print a one-line warning when a legacy flag is used.
+
+### Filtering by Session
+
+Once you know a session id, pass `--session <id>` to scope any report to that single session (exact match). The typical workflow is to list sessions first, then drill into one:
+
+```bash
+# 1. List sessions with their start time and workspace
+tokscale --group-by session,model --light
+
+# Narrow the listing to one client first (e.g. OpenCode)
+tokscale --group-by session,model --client opencode --light
+
+# 2. Drill into a single session — totals, models, and cost for that session only
+tokscale --session ses_222d0f9a0ffeypPqys96oAHADI
+
+# Works with --json too
+tokscale --session ses_222d0f9a0ffeypPqys96oAHADI --json
+```
+
+`--session` pairs naturally with `--group-by session,model`, but it also works with the default views to show just that one session's totals.
+
+> **Tip**: `--group-by` (and therefore the session listing) only applies in `--light`/`--json` mode. In the interactive TUI, press `g` and pick a session grouping instead.
 
 ### Date Filtering
 
