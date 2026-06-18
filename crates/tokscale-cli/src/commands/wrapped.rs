@@ -247,6 +247,7 @@ async fn load_wrapped_data(options: &WrappedOptions) -> Result<WrappedData> {
         since: Some(since),
         until: Some(until),
         year: Some(year.clone()),
+        session: None,
         group_by: GroupBy::default(),
         scanner_settings: crate::tui::settings::load_scanner_settings(),
     })
