@@ -6065,6 +6065,7 @@ mod tests {
             "gjc",
             "grok",
             "jcode",
+            "micode",
             "commandcode",
             "synthetic",
         ];
