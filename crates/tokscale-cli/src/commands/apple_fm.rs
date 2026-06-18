@@ -307,7 +307,12 @@ mod imp {
     /// would condition later summaries on earlier prompts/responses — and a
     /// timed-out generation could leave a shared session busy. This mirrors the
     /// former Python backend, which built a new session inside its loop.
-    fn respond_one(model: FMRef, instructions: &CStr, schema: &CStr, input: &SessionInput) -> Option<SessionSummary> {
+    fn respond_one(
+        model: FMRef,
+        instructions: &CStr,
+        schema: &CStr,
+        input: &SessionInput,
+    ) -> Option<SessionSummary> {
         let session_ref = unsafe {
             FMLanguageModelSessionCreateFromSystemLanguageModel(
                 model,
