@@ -39,6 +39,11 @@ pub struct SessionSummary {
     pub task_category: String,
     pub description: String,
     pub complexity: String,
+    /// Provenance of THIS summary: `Some("apple-fm-on-device")` when produced by
+    /// Apple FM, `None` when it came from the heuristic (including per-session
+    /// fallbacks). Carried per-summary so heuristic results are never recorded
+    /// as Apple-FM-generated.
+    pub fm_version: Option<String>,
 }
 
 /// Allowed task categories. Anything else is coerced to `"other"`.
@@ -98,6 +103,7 @@ pub fn heuristic_classify(session: &SessionInput) -> SessionSummary {
         task_category: "other".to_string(),
         description: format!("Session in {project_name} using {models}."),
         complexity: complexity.to_string(),
+        fm_version: None,
     }
 }
 
@@ -288,23 +294,46 @@ mod imp {
             task_category,
             description,
             complexity,
+            fm_version: Some("apple-fm-on-device".to_string()),
         })
     }
 
-    /// Run a single structured generation against `session_ref`, blocking the
-    /// calling thread until the background callback fires. Returns the parsed
-    /// summary, or `None` on any error (caller falls back to the heuristic).
-    fn respond_one(
-        session_ref: FMRef,
-        schema: &CStr,
-        input: &SessionInput,
-    ) -> Option<SessionSummary> {
-        let prompt_ref = unsafe { FMComposedPromptInitialize() };
-        if prompt_ref.is_null() {
+    /// Run a single structured generation for `input`, blocking the calling
+    /// thread until the background callback fires. Returns the parsed summary,
+    /// or `None` on any error (caller falls back to the heuristic).
+    ///
+    /// A FRESH `LanguageModelSession` is created per input: the session is
+    /// stateful (it accumulates a transcript), so reusing one across sessions
+    /// would condition later summaries on earlier prompts/responses — and a
+    /// timed-out generation could leave a shared session busy. This mirrors the
+    /// former Python backend, which built a new session inside its loop.
+    fn respond_one(model: FMRef, instructions: &CStr, schema: &CStr, input: &SessionInput) -> Option<SessionSummary> {
+        let session_ref = unsafe {
+            FMLanguageModelSessionCreateFromSystemLanguageModel(
+                model,
+                instructions.as_ptr(),
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if session_ref.is_null() {
             return None;
         }
 
-        let prompt_text = CString::new(build_prompt(input)).ok()?;
+        // Build the prompt CString BEFORE allocating the composed-prompt handle,
+        // so an unexpected NUL byte cannot leak an allocated FM handle.
+        let prompt_text = match CString::new(build_prompt(input)) {
+            Ok(c) => c,
+            Err(_) => {
+                unsafe { FMRelease(session_ref) };
+                return None;
+            }
+        };
+        let prompt_ref = unsafe { FMComposedPromptInitialize() };
+        if prompt_ref.is_null() {
+            unsafe { FMRelease(session_ref) };
+            return None;
+        }
         unsafe { FMComposedPromptAddText(prompt_ref, prompt_text.as_ptr()) };
 
         let (tx, rx) = mpsc::channel::<CallbackResult>();
@@ -327,11 +356,12 @@ mod imp {
         // risk a use-after-free if the callback fires later.
         let received = rx.recv_timeout(FM_GENERATION_TIMEOUT);
 
-        // Release the composed prompt and the returned task handle.
+        // Release the task handle, composed prompt, and this input's session.
         if !task_ref.is_null() {
             unsafe { FMRelease(task_ref) };
         }
         unsafe { FMRelease(prompt_ref) };
+        unsafe { FMRelease(session_ref) };
 
         match received {
             Ok(Ok(json)) => parse_summary(&input.session_id, &json),
@@ -356,7 +386,8 @@ mod imp {
             return None;
         }
 
-        // 2) Create one session with the system instructions.
+        // 2) Prepare the shared instructions + output schema once. respond_one
+        //    creates a FRESH session per input from these (see its docs).
         let instructions = match CString::new(SYSTEM_INSTRUCTIONS) {
             Ok(c) => c,
             Err(_) => {
@@ -364,23 +395,9 @@ mod imp {
                 return None;
             }
         };
-        let session_ref = unsafe {
-            FMLanguageModelSessionCreateFromSystemLanguageModel(
-                model,
-                instructions.as_ptr(),
-                std::ptr::null_mut(),
-                0,
-            )
-        };
-        if session_ref.is_null() {
-            unsafe { FMRelease(model) };
-            return None;
-        }
-
         let schema = match CString::new(SCHEMA_JSON) {
             Ok(c) => c,
             Err(_) => {
-                unsafe { FMRelease(session_ref) };
                 unsafe { FMRelease(model) };
                 return None;
             }
@@ -390,13 +407,12 @@ mod imp {
         //    back to the heuristic for that single session.
         let mut results = Vec::with_capacity(sessions.len());
         for input in sessions {
-            match respond_one(session_ref, schema.as_c_str(), input) {
+            match respond_one(model, instructions.as_c_str(), schema.as_c_str(), input) {
                 Some(summary) => results.push(summary),
                 None => results.push(heuristic_classify(input)),
             }
         }
 
-        unsafe { FMRelease(session_ref) };
         unsafe { FMRelease(model) };
 
         Some(results)

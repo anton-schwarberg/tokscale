@@ -424,15 +424,14 @@ fn run_apple_fm_summarizer(payloads: &[serde_json::Value]) -> Result<Vec<serde_j
     // feature-off, or non-macOS) it returns `None` and we apply the Rust
     // heuristic to all sessions. apple-fm therefore stays the default backend
     // and degrades gracefully cross-platform — it never errors out the report.
-    let (summaries, fm_version): (Vec<apple_fm::SessionSummary>, Option<&str>) =
-        match apple_fm::summarize(&inputs) {
-            Some(v) => (v, Some("apple-fm-on-device")),
-            None => (
-                inputs.iter().map(apple_fm::heuristic_classify).collect(),
-                None,
-            ),
-        };
+    let summaries: Vec<apple_fm::SessionSummary> = match apple_fm::summarize(&inputs) {
+        Some(v) => v,
+        None => inputs.iter().map(apple_fm::heuristic_classify).collect(),
+    };
 
+    // Provenance is carried PER summary (`s.fm_version`): even when Apple FM is
+    // available, an individual generation that fails/times out is backfilled with
+    // the heuristic and must not be recorded as `apple-fm-on-device`.
     let results = summaries
         .into_iter()
         .map(|s| {
@@ -442,7 +441,7 @@ fn run_apple_fm_summarizer(payloads: &[serde_json::Value]) -> Result<Vec<serde_j
                 "task_category": s.task_category,
                 "description": s.description,
                 "complexity": s.complexity,
-                "fm_version": fm_version,
+                "fm_version": s.fm_version,
             })
         })
         .collect();
