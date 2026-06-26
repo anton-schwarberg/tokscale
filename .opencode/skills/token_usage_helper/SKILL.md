@@ -1,6 +1,6 @@
 ---
 name: token-usage-helper
-description: Use when the user asks about AI token usage, cost, spend, quotas, model/client/workspace/project/session breakdowns, daily/hourly/weekly/monthly reports, pricing, or local AI coding-agent usage data. This skill guides Claude to answer token and money questions with the installed `tokscale` CLI, including reports by exact date range, project/workspace, session, client, provider, model, and subscription usage.
+description: Use when the user asks about AI token usage, cost, spend, quotas, model/client/workspace/project/session breakdowns, daily/hourly/weekly/monthly reports, pricing, or local AI coding-agent usage data. This skill guides OpenCode to answer token and money questions with the installed `tokscale` CLI, including reports by exact date range, project/workspace, session, client, provider, model, and subscription usage.
 ---
 
 # Token Usage Helper
