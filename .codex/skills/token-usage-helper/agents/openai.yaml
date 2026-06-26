@@ -1,0 +1,4 @@
+interface:
+  display_name: "Token Usage Helper"
+  short_description: "Answer token and cost usage questions"
+  default_prompt: "Use $token-usage-helper to summarize my token usage by project, session, client, or model."
