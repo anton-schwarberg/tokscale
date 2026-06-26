@@ -1,65 +1,65 @@
 # Tokscale
 
-Tokscale ist ein CLI-Tool zum Auswerten lokaler Token-, Kosten- und Session-Daten aus AI-Coding-Agents. Dieses Repository enthaelt zusaetzlich Agent-Skills, damit Codex, Claude, Gemini oder OpenCode die passenden `tokscale`-Kommandos automatisch verwenden koennen.
+Tokscale is a CLI tool for analyzing local token, cost, and session data from AI coding agents. This repository also includes agent skills so Codex, Claude, Gemini, or OpenCode can automatically choose the right `tokscale` commands.
 
-## Schnellstart
+## Quick Start
 
-Installierte CLI pruefen:
+Check whether the CLI is installed:
 
 ```bash
 tokscale --version
 tokscale --help
 ```
 
-Falls `tokscale` noch nicht installiert ist:
+If `tokscale` is not installed yet:
 
 ```bash
 npm install -g tokscale
 ```
 
-Alternativ ohne globale Installation:
+Alternatively, run it without a global install:
 
 ```bash
 npx tokscale@latest --help
 bunx tokscale@latest --help
 ```
 
-## Skills Nutzen
+## Using The Skills
 
-Oeffne dieses Repository mit deinem Agenten und frage nach Token- oder Kosten-Nutzung. Die Skill-Dateien liegen fuer mehrere Agenten im Repo:
+Open this repository with your agent and ask about token or cost usage. Skill files are included for multiple agents:
 
 - Codex: `.codex/skills/token-usage-helper/`
 - Claude: `.claude/skills/token_usage_helper/`
 - Gemini: `.gemini/skills/token_usage_helper/`
 - OpenCode: `.opencode/skills/token_usage_helper/`
 
-Beispiele:
+Examples:
 
 ```text
-Use $token-usage-helper: Wie viele Tokens habe ich diese Woche verbraucht?
-Use $token-usage-helper: Zeig meine Kosten nach Projekt und Modell.
-Use $token-usage-helper: Welche Sessions waren gestern am teuersten?
-Use $token-usage-helper: Vergleiche Codex und Claude fuer diesen Monat.
+Use $token-usage-helper: How many tokens did I use this week?
+Use $token-usage-helper: Show my costs by project and model.
+Use $token-usage-helper: Which sessions were most expensive yesterday?
+Use $token-usage-helper: Compare Codex and Claude for this month.
 ```
 
-Der Skill nutzt die lokal installierte `tokscale`-CLI als Quelle der Wahrheit. Wenn README und CLI-Hilfe voneinander abweichen, gilt die Ausgabe von `tokscale --help`.
+The skill uses the locally installed `tokscale` CLI as the source of truth. If this README and the CLI help output disagree, trust `tokscale --help`.
 
-## Nuetzliche Kommandos
+## Useful Commands
 
-Diagnose der gefundenen lokalen Datenquellen:
+Diagnose local data sources:
 
 ```bash
 tokscale clients --json
 ```
 
-Gesamtuebersicht:
+Overall summary:
 
 ```bash
 tokscale --light --no-spinner
 tokscale --json --no-spinner
 ```
 
-Auswertung nach Modell, Client, Workspace oder Session:
+Breakdowns by model, client, workspace, or session:
 
 ```bash
 tokscale models --light --no-spinner
@@ -68,7 +68,7 @@ tokscale models --json --group-by workspace,model --no-spinner
 tokscale models --json --group-by session,model --no-spinner
 ```
 
-Zeitraumfilter:
+Date filters:
 
 ```bash
 tokscale --today --json --no-spinner
@@ -78,61 +78,61 @@ tokscale --month --json --no-spinner
 tokscale --since 2026-06-01 --until 2026-06-30 --json --no-spinner
 ```
 
-Tages- und Stundenberichte:
+Daily and hourly reports:
 
 ```bash
 tokscale monthly --light --no-spinner
 tokscale hourly --light --no-spinner
 ```
 
-Preise pruefen:
+Check pricing:
 
 ```bash
 tokscale pricing gpt-5 --json --no-spinner
 tokscale pricing list-overrides --json --no-spinner
 ```
 
-## Hinweise Fuer Agenten
+## Notes For Agents
 
-- Bei automatisierten Kommandos immer `--no-spinner` verwenden.
-- Fuer maschinenlesbare Auswertung `--json --no-spinner` bevorzugen.
-- `--week` bedeutet die letzten 7 Tage, nicht Kalenderwoche.
-- Fuer "diese Woche" einen expliziten Zeitraum mit `--since YYYY-MM-DD --until YYYY-MM-DD` verwenden.
-- Datumsfilter sind inklusiv und verwenden die lokale Zeitzone.
-- Login-, Sync-, Submit-, Delete- oder Browser-Kommandos nur ausfuehren, wenn der Nutzer das ausdruecklich braucht.
+- Always use `--no-spinner` for automated commands.
+- Prefer `--json --no-spinner` for machine-readable output.
+- `--week` means the last 7 days, not the current calendar week.
+- For "this week", use an explicit range with `--since YYYY-MM-DD --until YYYY-MM-DD`.
+- Date filters are inclusive and use the local timezone.
+- Only run login, sync, submit, delete, or browser-opening commands when the user explicitly needs them.
 
-## Datenschutz
+## Privacy
 
-Tokscale liest lokale Nutzungsdaten der installierten AI-Coding-Agents. Normale Report-Kommandos wie `tokscale --json` oder `tokscale models --json` werten lokale Dateien aus.
+Tokscale reads local usage data from installed AI coding agents. Normal report commands such as `tokscale --json` or `tokscale models --json` analyze local files.
 
-Einige Integrationen koennen zusaetzliche Sync- oder Login-Schritte brauchen, zum Beispiel Cursor, Trae, Warp oder Antigravity. Diese Kommandos koennen externe Accounts oder lokale Caches beruehren und sollten bewusst ausgefuehrt werden.
+Some integrations may require additional sync or login steps, for example Cursor, Trae, Warp, or Antigravity. These commands may touch external accounts or local caches and should be run deliberately.
 
-## Entwicklung
+## Development
 
-Abhaengigkeiten installieren:
+Install dependencies:
 
 ```bash
 bun install
 ```
 
-CLI lokal bauen:
+Build the CLI locally:
 
 ```bash
 bun run build
 ```
 
-CLI aus dem Repository starten:
+Run the CLI from this repository:
 
 ```bash
 bun run cli -- --help
 ```
 
-Tests fuer die Rust-CLI:
+Run tests for the Rust CLI:
 
 ```bash
 cargo test -p tokscale-cli
 ```
 
-## Lizenz
+## License
 
-Siehe [LICENSE](LICENSE).
+See [LICENSE](LICENSE).
